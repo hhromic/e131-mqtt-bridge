@@ -7,6 +7,8 @@ To compile the bridging server, simply use the `make` utility:
 ```shell
 $ make
 
+You must have the `libmosquitto` [development library](http://mosquitto.org/download/) installed on your system.
+
 # clean
 $ make clean
 ```
