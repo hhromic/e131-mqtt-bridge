@@ -7,13 +7,11 @@ To compile the bridging server, simply use the `make` utility:
 ```shell
 $ make
 
-You must have the `libmosquitto` [development library](http://mosquitto.org/download/) installed on your system.
-
 # clean
 $ make clean
 ```
 
-You can install the binary file wherever you want.
+You must have the `libmosquitto` [development library](http://mosquitto.org/download/) installed on your system. Once compiled, you can install the binary file wherever you want.
 
 ## Running
 
