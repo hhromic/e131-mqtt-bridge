@@ -17,15 +17,15 @@
 
 PROGRAM = e131-mqtt-bridge
 CFLAGS = -Wall -O3
-LDFLAGS = -lmosquitto
+LDLIBS = -lmosquitto
 
 SOURCES = $(wildcard src/*.c)
 OBJECTS = $(SOURCES:.c=.o)
 
 $(PROGRAM): $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(LINK.o) $^ $(LDLIBS) -o $@
 	strip -s $(PROGRAM)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJECTS) $(PROGRAM)
+	$(RM) $(OBJECTS) $(PROGRAM)
