@@ -16,6 +16,7 @@
 # limitations under the License.
 
 PROGRAM = e131-mqtt-bridge
+CPPFLAGS = -MMD -MP
 CFLAGS = -Wall -O3
 LDLIBS = -lmosquitto
 
@@ -29,3 +30,5 @@ $(PROGRAM): $(OBJECTS)
 .PHONY: clean
 clean:
 	$(RM) $(OBJECTS) $(PROGRAM)
+
+-include $(SOURCES:%.c=%.d)
