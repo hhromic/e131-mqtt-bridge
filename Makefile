@@ -15,20 +15,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PROGRAM = e131-mqtt-bridge
+TARGET = e131-mqtt-bridge
 CPPFLAGS = -MMD -MP
 CFLAGS = -Wall -O3
 LDLIBS = -lmosquitto
 
 SOURCES = $(wildcard src/*.c)
 OBJECTS = $(SOURCES:.c=.o)
+DEPS = $(SOURCES:%.c=%.d)
 
-$(PROGRAM): $(OBJECTS)
+.PHONY: clean all
+
+$(TARGET): $(OBJECTS)
 	$(LINK.o) $^ $(LDLIBS) -o $@
-	strip -s $(PROGRAM)
+	strip -s $(TARGET)
 
-.PHONY: clean
 clean:
-	$(RM) $(OBJECTS) $(PROGRAM)
+	$(RM) $(OBJECTS) $(DEPS) $(TARGET)
 
--include $(SOURCES:%.c=%.d)
+-include $(DEPS)
