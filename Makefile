@@ -24,7 +24,7 @@ SOURCES = $(wildcard src/*.c)
 OBJECTS = $(SOURCES:.c=.o)
 DEPS = $(SOURCES:%.c=%.d)
 
-.PHONY: clean all
+.PHONY: clean
 
 $(TARGET): $(OBJECTS)
 	$(LINK.o) $^ $(LDLIBS) -o $@
