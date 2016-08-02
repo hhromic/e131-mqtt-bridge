@@ -20,13 +20,6 @@
 #ifndef _PROTOTYPES_H
 #define _PROTOTYPES_H
 
-#include <stdint.h>
-#include <termios.h>
-#include "e131.h"
-
-extern int e131_validate(e131_packet_t *packet);
-extern void init_socket_udp(int fd, uint16_t port);
-extern void join_e131_multicast(int fd, uint16_t universe);
 extern void show_usage(char *prog_name);
 
 #endif

@@ -18,7 +18,7 @@
 TARGET = e131-mqtt-bridge
 CPPFLAGS = -MMD -MP
 CFLAGS = -Wall -O3 -std=gnu11 -pedantic
-LDLIBS = -lmosquitto
+LDLIBS = -lmosquitto -le131
 
 SOURCES = $(wildcard src/*.c)
 OBJECTS = $(SOURCES:.c=.o)

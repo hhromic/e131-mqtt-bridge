@@ -24,8 +24,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <mosquitto.h>
+#include <e131.h>
+#include <err.h>
 #include "prototypes.h"
-#include "e131.h"
 
 int main(int argc, char **argv) {
   int opt;
@@ -36,7 +37,7 @@ int main(int argc, char **argv) {
   char *mqtt_password = NULL;
   char *mqtt_topic = NULL;
   struct mosquitto *mqtt_client = NULL;
-  int socket_udp_fd;
+  int e131_fd;
   e131_packet_t e131_packet;
   uint8_t curr_sequence = 0x00;
 
@@ -81,56 +82,45 @@ int main(int argc, char **argv) {
 
   // start connection with the MQTT broker
   mosquitto_lib_init();
-  if ((mqtt_client = mosquitto_new(NULL, true, NULL)) == NULL) {
-    perror("mosquitto_new");
-    exit(EXIT_FAILURE);
-  }
-  if (mqtt_username != NULL && mqtt_password != NULL) {
-    if (mosquitto_username_pw_set(mqtt_client, mqtt_username, mqtt_password)) {
-      perror("mosquitto_username_pw_set");
-      exit(EXIT_FAILURE);
-    }
-  }
-  if (mosquitto_connect(mqtt_client, mqtt_host, mqtt_port, 60)) {
-    perror("mosquitto_connect");
-    exit(EXIT_FAILURE);
-  }
+  if ((mqtt_client = mosquitto_new(NULL, true, NULL)) == NULL)
+    err(EXIT_FAILURE, "mosquitto_new");
+  if (mqtt_username != NULL && mqtt_password != NULL)
+    if (mosquitto_username_pw_set(mqtt_client, mqtt_username, mqtt_password))
+      err(EXIT_FAILURE, "mosquitto_username_pw_set");
+  if (mosquitto_connect(mqtt_client, mqtt_host, mqtt_port, 60))
+    err(EXIT_FAILURE, "mosquitto_connect");
   fprintf(stderr, "connected to MQTT broker at '%s'\n", mqtt_host);
 
-  // open udp socket, initialise and join multicast group
-  if ((socket_udp_fd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
-    perror("socket");
-    exit(EXIT_FAILURE);
-  }
-  init_socket_udp(socket_udp_fd, E131_DEFAULT_PORT);
-  join_e131_multicast(socket_udp_fd, universe);
-  fprintf(stderr, "multicast UDP server listening on port %d\n", E131_DEFAULT_PORT);
+  // open E1.31 socket and join multicast group for the universe
+  if ((e131_fd = e131_socket()) < 0)
+    err(EXIT_FAILURE, "e131_socket");
+  if (e131_bind(e131_fd, E131_DEFAULT_PORT) < 0)
+    err(EXIT_FAILURE, "e131_bind");
+  if (e131_multicast_join(e131_fd, universe) < 0)
+    err(EXIT_FAILURE, "e131_multicast_join");
+  fprintf(stderr, "E1.31 multicast server listening on port %d\n", E131_DEFAULT_PORT);
 
   // bridge E1.31 data to the MQTT broker
   fprintf(stderr, "bridging E1.31 (sACN) to MQTT, use CTRL+C to stop\n");
   for (;;) {
-    if (recv(socket_udp_fd, e131_packet.raw, sizeof(e131_packet.raw), 0) < 0) {
-      perror("recv");
-      exit(EXIT_FAILURE);
-    }
-    if (e131_validate_packet(&e131_packet) != E131_ERR_NONE) {
+    if (e131_recv(e131_fd, &e131_packet) < 0)
+      err(EXIT_FAILURE, "e131_recv");
+    if (e131_pkt_validate(&e131_packet) != E131_ERR_NONE) {
       fprintf(stderr, "warning: invalid E1.31 packet received\n");
       continue;
     }
-    if (e131_packet.sequence_number != curr_sequence++) {
+    if (e131_packet.frame.sequence_number != curr_sequence++) {
       fprintf(stderr, "warning: out of order E1.31 packet received\n");
-      curr_sequence = e131_packet.sequence_number + 1;
+      curr_sequence = e131_packet.frame.sequence_number + 1;
       continue;
     }
-    if (mosquitto_publish(mqtt_client, NULL, mqtt_topic, htons(e131_packet.property_value_count) - 1, e131_packet.property_values + 1, 0, false)) {
-      perror("mosquitto_publish");
-      exit(EXIT_FAILURE);
-    }
+    if (mosquitto_publish(mqtt_client, NULL, mqtt_topic, ntohs(e131_packet.dmp.property_value_count) - 1, e131_packet.dmp.property_values + 1, 0, false))
+      err(EXIT_FAILURE, "mosquitto_publish");
   }
 
   // finished
   mosquitto_destroy(mqtt_client);
   mosquitto_lib_cleanup();
-  close(socket_udp_fd);
+  close(e131_fd);
   exit(EXIT_SUCCESS);
 }
