@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
   struct mosquitto *mqtt_client = NULL;
   int e131_fd;
   e131_packet_t e131_packet;
-  uint8_t curr_sequence = 0x00;
+  e131_error_t e131_error;
+  uint8_t curr_seq = 0x00;
 
   // program options
   while ((opt = getopt(argc, argv, "HU:h:p:u:P:t:")) != -1) {
@@ -105,16 +106,16 @@ int main(int argc, char **argv) {
   for (;;) {
     if (e131_recv(e131_fd, &e131_packet) < 0)
       err(EXIT_FAILURE, "e131_recv");
-    if (e131_pkt_validate(&e131_packet) != E131_ERR_NONE) {
-      fprintf(stderr, "warning: invalid E1.31 packet received\n");
+    if ((e131_error = e131_pkt_validate(&e131_packet)) != E131_ERR_NONE) {
+      fprintf(stderr, "e131_pkt_validate: %s\n", e131_strerror(e131_error));
       continue;
     }
-    if (e131_packet.frame.sequence_number != curr_sequence++) {
+    if (e131_packet.frame.seq_number != curr_seq++) {
       fprintf(stderr, "warning: out of order E1.31 packet received\n");
-      curr_sequence = e131_packet.frame.sequence_number + 1;
+      curr_seq = e131_packet.frame.seq_number + 1;
       continue;
     }
-    if (mosquitto_publish(mqtt_client, NULL, mqtt_topic, ntohs(e131_packet.dmp.property_value_count) - 1, e131_packet.dmp.property_values + 1, 0, false))
+    if (mosquitto_publish(mqtt_client, NULL, mqtt_topic, ntohs(e131_packet.dmp.prop_value_cnt) - 1, e131_packet.dmp.prop_values + 1, 0, false))
       err(EXIT_FAILURE, "mosquitto_publish");
   }
 
